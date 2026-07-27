@@ -90,9 +90,7 @@ class TestAccountService(TestCase):
         """It should Create a new Account"""
         account = AccountFactory()
         response = self.client.post(
-            BASE_URL,
-            json=account.serialize(),
-            content_type="application/json"
+            BASE_URL, json=account.serialize(), content_type="application/json"
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -117,14 +115,11 @@ class TestAccountService(TestCase):
         """It should not Create an Account when sending the wrong media type"""
         account = AccountFactory()
         response = self.client.post(
-            BASE_URL,
-            json=account.serialize(),
-            content_type="test/html"
+            BASE_URL, json=account.serialize(), content_type="test/html"
         )
         self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
     # ADD YOUR TEST CASES HERE ...
-
 
     ######################################################################
     #  R E A D   A C C O U N T   T E S T   C A S E S
@@ -134,11 +129,11 @@ class TestAccountService(TestCase):
         """It should Read a single Account"""
         # Create a mock account to test against using the helper method
         account = self._create_accounts(1)[0]
-        
+
         # Make a GET request to read the created account
         response = self.client.get(f"{BASE_URL}/{account.id}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
+
         # Verify that the returned JSON data matches what we originally created
         data = response.get_json()
         self.assertEqual(data["name"], account.name)
@@ -149,3 +144,74 @@ class TestAccountService(TestCase):
         response = self.client.get(f"{BASE_URL}/0")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    ######################################################################
+    #  L I S T   A C C O U N T   T E S T   C A S E S
+    ######################################################################
+
+    def test_get_account_list(self):
+        """It should Get a list of Accounts"""
+        # Create 5 fake accounts in the test database
+        self._create_accounts(5)
+
+        # Send a GET request to the base URL endpoint
+        response = self.client.get(BASE_URL)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Verify the array contains exactly the 5 items we generated
+        data = response.get_json()
+        self.assertEqual(len(data), 5)
+
+    ######################################################################
+    #  U P D A T E   A C C O U N T   T E S T   C A S E S
+    ######################################################################
+
+    def test_update_account(self):
+        """It should Update an existing Account"""
+        # Create a mock account to test updating
+        test_account = AccountFactory()
+        response = self.client.post(BASE_URL, json=test_account.serialize())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Get the account details from the response
+        new_account = response.get_json()
+
+        # Modify an attribute (changing the name to something known)
+        new_account["name"] = "Updated Name Testing"
+
+        # Send a PUT request to the specific account endpoint with the modified payload
+        resp = self.client.put(f"{BASE_URL}/{new_account['id']}", json=new_account)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+        # Verify the returned account profile displays the updated name change
+        updated_account = resp.get_json()
+        self.assertEqual(updated_account["name"], "Updated Name Testing")
+
+    def test_update_account_not_found(self):
+        """It should not Update an Account that does not exist"""
+        # Create a dummy payload to send
+        dummy_account = AccountFactory().serialize()
+
+        # Try to update an invalid ID (0)
+        response = self.client.put(f"{BASE_URL}/0", json=dummy_account)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    ######################################################################
+    #  D E L E T E   A C C O U N T   T E S T   C A S E S
+    ######################################################################
+
+    def test_delete_account(self):
+        """It should Delete an Account"""
+        # Create an account to test deletion against
+        account = self._create_accounts(1)[0]
+
+        # Send a DELETE request to the specific endpoint path
+        response = self.client.get(f"{BASE_URL}/{account.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Request deletion of the target account profile record
+        resp = self.client.delete(f"{BASE_URL}/{account.id}")
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+
+        # Ensure that trying to read the deleted account now safely returns a 404
+        check_resp = self.client.get(f"{BASE_URL}/{account.id}")
+        self.assertEqual(check_resp.status_code, status.HTTP_404_NOT_FOUND)
