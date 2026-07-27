@@ -9,8 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    # Encapsulate the entire job sequence to run inside this container image
     container:
       image: python:3.9-slim
 
@@ -19,8 +17,8 @@ jobs:
         image: postgres:alpine
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: pgs3cr3t
+          POSTGRES_DB: testdb
         ports:
           - 5432:5432
         options: >-
@@ -45,6 +43,6 @@ jobs:
 
       - name: Run tests with nosetests
         env:
-          DATABASE_URI: postgresql://postgres:postgres@localhost:5432/postgres
+          DATABASE_URI: postgresql://postgres:pgs3cr3t@localhost:5432/testdb
         run: |
           nosetests
