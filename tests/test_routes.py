@@ -12,12 +12,14 @@ from tests.factories import AccountFactory
 from service.common import status  # HTTP Status Codes
 from service.models import db, Account, init_db
 from service.routes import app
+from service import app, talisman
 
 DATABASE_URI = os.getenv(
     "DATABASE_URI", "postgresql://postgres:postgres@localhost:5432/postgres"
 )
 
 BASE_URL = "/accounts"
+HTTPS_ENVIRON = {'wsgi.url_scheme': 'https'}
 
 
 ######################################################################
@@ -25,16 +27,16 @@ BASE_URL = "/accounts"
 ######################################################################
 class TestAccountService(TestCase):
     """Account Service Tests"""
-
     @classmethod
     def setUpClass(cls):
         """Run once before all tests"""
+        talisman.force_https = False
         app.config["TESTING"] = True
         app.config["DEBUG"] = False
         app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
         app.logger.setLevel(logging.CRITICAL)
         init_db(app)
-
+  
     @classmethod
     def tearDownClass(cls):
         """Runs once before test suite"""
@@ -215,3 +217,19 @@ class TestAccountService(TestCase):
         # Ensure that trying to read the deleted account now safely returns a 404
         check_resp = self.client.get(f"{BASE_URL}/{account.id}")
         self.assertEqual(check_resp.status_code, status.HTTP_404_NOT_FOUND)
+    ######################################################################
+    #  S E C U R I T Y   A N D   C O R S   T E S T   C A S E S
+    ######################################################################
+    def test_security_headers(self):
+        """It should return secure security headers"""
+        response = self.client.get("/", environ_overrides=HTTPS_ENVIRON)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        expected_headers = {
+            'X-Frame-Options': 'SAMEORIGIN',
+            'X-Content-Type-Options': 'nosniff',
+            'Content-Security-Policy': "default-src 'self'; object-src 'none'",
+            'Referrer-Policy': 'strict-origin-when-cross-origin'
+        }
+        for key, value in expected_headers.items():
+            self.assertEqual(response.headers.get(key), value)
