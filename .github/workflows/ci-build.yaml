@@ -5,9 +5,14 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    # Encapsulate the entire job sequence to run inside this container image
+    container:
+      image: python:3.9-slim
 
     services:
       postgres:
@@ -18,7 +23,6 @@ jobs:
           POSTGRES_DB: postgres
         ports:
           - 5432:5432
-        # Wait until postgres is healthy before running our application code tests
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -28,11 +32,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.9"
 
       - name: Install dependencies
         run: |
